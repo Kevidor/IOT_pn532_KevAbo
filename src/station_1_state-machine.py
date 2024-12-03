@@ -1,4 +1,5 @@
 import logging
+import nfc_reader as nfc
 
 # Initialize logger
 logging.basicConfig(level=logging.DEBUG)
@@ -30,9 +31,12 @@ class State:
 class State0(State):
     def run(self):
         logging.info("Initializing RFID reader...")
-        
+        init_successful = False
+
         # Simulate RFID reader initialization (replace with actual initialization code)
-        init_successful = True  # Simulate success
+        #init_successful = True  # Simulate success
+        nfc_reader = nfc.NFCReader()
+        if nfc_reader.pn532 != None: init_successful == True
         
         if init_successful:
             logging.info("RFID reader initialized successfully.")
@@ -46,8 +50,15 @@ class State1(State):
         logging.info("Waiting for RFID card...")
         
         # Simulate card detection (replace with actual detection code)
-        uid = [45, 162, 193, 56]  # Placeholder for RFID detection
-        
+        #uid = [45, 162, 193, 56]  # Placeholder for RFID detection
+        while True:
+            uid = nfc_reader.read_passive_target(timeout=0.5)
+            print(".", end="")
+            if uid is None:
+                continue
+            logger.info("Found card with UID: %s", [hex(i) for i in uid])
+            break
+
         if uid is None:
             logging.warning("No card detected. Retrying...")
             self.machine.current_state = 'State1'  # Wait again
@@ -58,9 +69,11 @@ class State1(State):
 class State2(State):
     def run(self):
         logging.info("Writing Bottle ID to card...")
-        
+        write_successful = False
+
         # Simulate writing logic
         write_successful = True  # Simulate success
+        #write_successful = nfc_reader.write_block(uid, )
         
         if write_successful:
             logging.info("Successfully wrote to card.")

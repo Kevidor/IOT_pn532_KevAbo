@@ -80,6 +80,26 @@ class NFCReader(PN532_SPI, NFCReaderInterface):
                 logger.warning("No data read from Block %d", block_number)
         return blocks_data
 
+    def write_block(self, uid, block_number, data):
+        try:
+            authenticated = self._pn532.mifare_classic_authenticate_block(
+                uid, block_number, 0x60, key=DEFAULT_KEY_A
+            )
+            if not authenticated:
+                logger.error("Failed to authenticate block %d for writing", block_number)
+                return False
+
+            success = self._pn532.mifare_classic_write_block(block_number, data)
+            if not success:
+                logger.error("Failed to write to block %d", block_number)
+                return False
+
+            logger.info("Successfully wrote data to block %d", block_number)
+            return True
+        except Exception as e:
+            logger.exception("Error writing block %d: %s", block_number, e)
+            return False
+
 
 
 if __name__ == "__main__":
