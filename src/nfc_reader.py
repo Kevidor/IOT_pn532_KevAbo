@@ -33,34 +33,43 @@ class NFCReaderInterface(ABC):
 
 
 
-class NFCReader(PN532_SPI, NFCReaderInterface):
+class NFCReader(NFCReaderInterface):
     def __init__(self):
-        self.pn532 = self.config_pn532()
+        self._pn532 = self.config()
+        self.uid = None
 
-    def config_pn532(self):
+    def __getattr__(self, name):
+        """
+        Delegate any call to PN532_SPI if it's not explicitly defined in NFCReader.
+        """
+        return getattr(self._pn532, name)
+
+    def config(self):
         try:
             spi = busio.SPI(board.SCK, board.MOSI, board.MISO)
             cs_pin = DigitalInOut(board.D8)
             pn532 = PN532_SPI(spi, cs_pin, debug=False)
 
             ic, ver, rev, support = pn532.firmware_version
-            logging.info("Found PN532 with firmware version: %d.%d", ver, rev)
+            logger.info("Found PN532 with firmware version: %d.%d", ver, rev)
 
             # Configure PN532 to communicate with MiFare cards
             pn532.SAM_configuration()
             return pn532
         except Exception as e:
-            logging.error("Failed to configure PN532: %s", e)
+            logger.error("Failed to configure PN532: %s", e)
             raise
 
     def read_block(self, uid, block_number):
         try:
-            authenticated = self.mifare_classic_authenticate_block(uid, block_number, 0x60, KEY_A = DEFAULT_KEY_A)
+            authenticated = self._pn532.mifare_classic_authenticate_block(
+                uid, block_number, 0x60, key=DEFAULT_KEY_A
+            )
             if not authenticated:
                 logger.error("Failed to authenticate block %d", block_number)
                 return None
 
-            block_data = self.mifare_classic_read_block(block_number)
+            block_data = self._pn532.mifare_classic_read_block(block_number)
             if block_data is None:
                 logger.error("Failed to read block %d", block_number)
                 return None
@@ -69,7 +78,7 @@ class NFCReader(PN532_SPI, NFCReaderInterface):
         except Exception as e:
             logger.exception("Error reading block %d: %s", block_number, e)
             return None
-        
+
     def read_all_blocks(self, uid):
         blocks_data = []
         for block_number in range(BLOCK_COUNT):
@@ -100,7 +109,23 @@ class NFCReader(PN532_SPI, NFCReaderInterface):
             logger.exception("Error writing block %d: %s", block_number, e)
             return False
 
+def strint_to_hex_block(hex_string) -> bytes:
+    if isinstance(hex_string, int): hex_string = hex(hex_string)[2:]
+    if len(hex_string) % 2 != 0:
+        hex_string = '0' + hex_string  # Pad with leading zero if necessary
 
+    data = bytes(int(hex_string[i:i+2], 16) for i in range(0, len(hex_string), 2))
+    padded_data = data + b'\x00' * (16 - len(data))
+
+    return padded_data
+
+def hex_block_to_strint(padded_data: bytes, to_int: bool = True):
+    unpadded_data = padded_data.rstrip(b'\x00')
+    
+    hex_string = ''.join(f'{byte:02X}' for byte in unpadded_data)
+    if to_int: hex_string = int(hex_string, 16)
+
+    return hex_string
 
 if __name__ == "__main__":
 
@@ -115,7 +140,14 @@ if __name__ == "__main__":
         logger.info("Found card with UID: %s", [hex(i) for i in uid])
         break
 
-    blocks_data = nfc_reader.read_all_blocks(uid)
-    for block_number, block_data in enumerate(blocks_data):
-        hex_values = ' '.join([f'{byte:02x}' for byte in block_data])
-        logger.info("Data in Block %d: %s", block_number, hex_values)
+    
+    #for i in range(4,7):
+    nfc_reader.write_block(uid, 4, strint_to_hex_block(2))
+
+    #blocks_data = nfc_reader.read_all_blocks(uid)
+    #for block_number, block_data in enumerate(blocks_data):
+    #    hex_values = ' '.join([f'{byte:02x}' for byte in block_data])
+    #    logger.info("Data in Block %d: %s", block_number, hex_values)
+
+    flaschen_id = nfc_reader.read_block(uid, 4)
+    print(flaschen_id)

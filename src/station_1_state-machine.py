@@ -1,12 +1,18 @@
 import logging
 import nfc_reader as nfc
+import sqlite3 as sql
+from time import time
 
-# Initialize logger
+# Initialize logger, NFCREADER and Databasepath
 logging.basicConfig(level=logging.DEBUG)
+nfc_reader = None
+SQL_PATH = "/home/uwe/IOT_pn532_KevAbo/data/flaschen_database.db"
 
 class StateMachine:
-    def __init__(self):
+    def __init__(self, reader):
         self.current_state = 'State0'
+        self.reader = reader
+        self.SQL_counter = None
         self.states = {
             'State0': State0(self),
             'State1': State1(self),
@@ -32,11 +38,12 @@ class State0(State):
     def run(self):
         logging.info("Initializing RFID reader...")
         init_successful = False
+        self.machine.SQL_counter = 1
 
         # Simulate RFID reader initialization (replace with actual initialization code)
-        #init_successful = True  # Simulate success
-        nfc_reader = nfc.NFCReader()
-        if nfc_reader.pn532 != None: init_successful == True
+        self.machine.reader = nfc.NFCReader()
+        if self.machine.reader: 
+            init_successful = True
         
         if init_successful:
             logging.info("RFID reader initialized successfully.")
@@ -49,21 +56,20 @@ class State1(State):
     def run(self):
         logging.info("Waiting for RFID card...")
         
-        # Simulate card detection (replace with actual detection code)
         #uid = [45, 162, 193, 56]  # Placeholder for RFID detection
         while True:
-            uid = nfc_reader.read_passive_target(timeout=0.5)
+            self.machine.reader.uid = self.machine.reader.read_passive_target(timeout=0.5)
             print(".", end="")
-            if uid is None:
+            if self.machine.reader.uid is None:
                 continue
-            logger.info("Found card with UID: %s", [hex(i) for i in uid])
+            #logging.info("Found card with UID: %s", [hex(i) for i in self.machine.reader.uid])
             break
 
-        if uid is None:
+        if self.machine.reader.uid is None:
             logging.warning("No card detected. Retrying...")
             self.machine.current_state = 'State1'  # Wait again
         else:
-            logging.info(f"Found card with UID: {[hex(i) for i in uid]}") 
+            logging.info(f"Found card with UID: {[hex(i) for i in self.machine.reader.uid]}") 
             self.machine.current_state = 'State2'  # Transition to State2
 
 class State2(State):
@@ -72,8 +78,7 @@ class State2(State):
         write_successful = False
 
         # Simulate writing logic
-        write_successful = True  # Simulate success
-        #write_successful = nfc_reader.write_block(uid, )
+        write_successful = self.machine.reader.write_block(self.machine.reader.uid, 4, nfc.str_to_hex_block('B16B00B5')) # type: ignore
         
         if write_successful:
             logging.info("Successfully wrote to card.")
@@ -87,7 +92,24 @@ class State3(State):
         logging.info("Saving Bottle ID and timestamp to database...")
         
         # Simulate database write (replace with actual database code)
-        db_write_successful = True  # Simulate success
+        db_write_successful = False
+
+        # Simulate database write (replace with actual database code)
+        #db_write_successful = True  # Simulate success
+        conn = sql.connect(SQL_PATH)
+        cursor = conn.cursor()
+
+        cursor.execute("UPDATE Flasche SET Tagged_Date = ? WHERE Flaschen_ID = ?", (69, self.machine.SQL_counter))
+        conn.commit()
+
+        cursor.execute("SELECT Tagged_Date FROM Flasche WHERE Flaschen_ID = ?", (self.machine.SQL_counter,))
+        cell_data = cursor.fetchone()
+        if cell_data[0] == 69: db_write_successful = True
+
+        self.machine.SQL_counter += 1
+
+        # Close the connection
+        conn.close()
         
         if db_write_successful:
             logging.info("Successfully saved to database.")
@@ -110,6 +132,6 @@ class State5(State):
 
 # Main execution
 if __name__ == '__main__':
-    machine = StateMachine()
+    machine = StateMachine(nfc_reader)
     machine.run()
     logging.info("Stopped Execution. Please rerun the program to start again.")
