@@ -7,7 +7,7 @@ from PIL import Image
 # Initialize logger, NFCREADER and Databasepath
 logging.basicConfig(level=logging.DEBUG)
 nfc_reader = None
-SQL_PATH = "../data/flaschen_database.db"
+SQL_PATH = "/home/uwe/IOT_pn532_KevAbo/data/flaschen_database.db"
 
 class StateMachine:
     def __init__(self, reader):
@@ -62,7 +62,7 @@ class State1(State):
             if self.machine.reader.uid is None:
                 continue
             break
-
+        
         self.machine.flaschen_id = nfc.hex_block_to_strint(self.machine.reader.read_block(self.machine.reader.uid, 4))
 
         if self.machine.reader.uid is None:
@@ -78,17 +78,17 @@ class State2(State):
         logging.info("Reading from Database...")
         db_read_successful = False
 
-        rezept_id, granulat_id, menge = None
+        rezept_id, granulat_id, menge = None, None, None
 
         conn = sql.connect(SQL_PATH)
         cursor = conn.cursor()
 
         cursor.execute("SELECT Rezept_ID FROM Flasche WHERE Flaschen_ID = ?", (self.machine.flaschen_id,))
-        rezept_id = cursor.fetchone()
+        rezept_id = cursor.fetchone()[0]
         cursor.execute("SELECT Granulat_ID FROM Rezept_besteht_aus_Granulat WHERE Rezept_ID = ?", (rezept_id,))
-        granulat_id = cursor.fetchone()
+        granulat_id = cursor.fetchone()[0]
         cursor.execute("SELECT Menge FROM Rezept_besteht_aus_Granulat WHERE Rezept_ID = ?", (rezept_id,))
-        menge = cursor.fetchone()
+        menge = cursor.fetchone()[0]
 
         conn.close()
 
@@ -106,19 +106,31 @@ class State2(State):
 # Create QR-Code State
 class State3(State):
     def run(self):
+        qr_creation_successful = False
+
         qr = qrcode.QRCode(version=1, box_size=10, border=4)
-        qr.add_data("data which should be in qrqoute")
+        qr.add_data(self.machine.flaschen_id)
         qr_img = qr.make_image(fill_color='black', back_color='white')
 
         logo = Image.open("MCI-negative_Print.png").resize((75, 75), Image.LANCZOS)
         offset = ((qr_img.size[0] - 75) // 2, (qr_img.size[1] - 75) // 2)
         qr_img.paste(logo, offset, mask=logo.split()[3] if logo.mode == 'RGBA' else None)
         
-        qr_img.save("qr_with_logo.png")
+        qr_img.save(f"../src/QR_Code{self.machine.flaschen_id}.png")
+
+        if qr_creation_successful:
+            logging.info("Successfully created QR-Code.")
+            self.machine.current_state = 'State3'
+        else:
+            logging.error("Failed to create QR-Code.")
+            self.machine.current_state = 'State5'
 
 class State4(State):
     def run(self):
-        pass
+        logging.info("Successfully completed the process! Returning to State1.")
+        
+        # Transition back to State1 - probably not hepful while debugging
+        #self.machine.current_state = 'State1'  
 
 class State5(State):
     def run(self):

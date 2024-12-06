@@ -142,7 +142,7 @@ if __name__ == "__main__":
 
     
     #for i in range(4,7):
-    nfc_reader.write_block(uid, 4, strint_to_hex_block(2))
+    #nfc_reader.write_block(uid, 4, strint_to_hex_block(1))
 
     #blocks_data = nfc_reader.read_all_blocks(uid)
     #for block_number, block_data in enumerate(blocks_data):

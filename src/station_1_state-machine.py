@@ -4,7 +4,7 @@ import sqlite3 as sql
 from time import time
 
 # Initialize logger, NFCREADER and Databasepath
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG, filename= "../log/log.log")
 nfc_reader = None
 SQL_PATH = "/home/uwe/IOT_pn532_KevAbo/data/flaschen_database.db"
 
@@ -78,7 +78,7 @@ class State2(State):
         write_successful = False
 
         # Simulate writing logic
-        write_successful = self.machine.reader.write_block(self.machine.reader.uid, 4, nfc.str_to_hex_block('B16B00B5')) # type: ignore
+        write_successful = self.machine.reader.write_block(self.machine.reader.uid, 4, nfc.strint_to_hex_block('B16B00B5')) # type: ignore
         
         if write_successful:
             logging.info("Successfully wrote to card.")
