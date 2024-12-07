@@ -139,6 +139,8 @@ venv.bak/
 
 # mkdocs documentation
 /site
+MCI-negative_Print.png
+sad_pepe.png
 
 # mypy
 .mypy_cache/

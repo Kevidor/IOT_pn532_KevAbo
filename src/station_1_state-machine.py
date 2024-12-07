@@ -4,15 +4,23 @@ import sqlite3 as sql
 from time import time
 
 # Initialize logger, NFCREADER and Databasepath
-logging.basicConfig(level=logging.DEBUG, filename= "../log/log.log")
 nfc_reader = None
 SQL_PATH = "/home/uwe/IOT_pn532_KevAbo/data/flaschen_database.db"
+LOG_PATH = "/home/uwe/IOT_pn532_KevAbo/log/station1.log"
+logging.basicConfig(
+    level=logging.DEBUG,
+    filename=LOG_PATH,
+    filemode="a",
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 class StateMachine:
     def __init__(self, reader):
         self.current_state = 'State0'
         self.reader = reader
         self.SQL_counter = None
+        self.unix_time = None
         self.states = {
             'State0': State0(self),
             'State1': State1(self),
@@ -36,7 +44,7 @@ class State:
 
 class State0(State):
     def run(self):
-        logging.info("Initializing RFID reader...")
+        logger.info("Initializing RFID reader...")
         init_successful = False
         self.machine.SQL_counter = 1
 
@@ -46,15 +54,15 @@ class State0(State):
             init_successful = True
         
         if init_successful:
-            logging.info("RFID reader initialized successfully.")
+            logger.info("RFID reader initialized successfully.")
             self.machine.current_state = 'State1'  # Transition to State1
         else:
-            logging.error("Failed to initialize RFID reader.")
+            logger.error("Failed to initialize RFID reader.")
             self.machine.current_state = 'State5'  # Transition to State5
 
 class State1(State):
     def run(self):
-        logging.info("Waiting for RFID card...")
+        logger.info("Waiting for RFID card...")
         
         #uid = [45, 162, 193, 56]  # Placeholder for RFID detection
         while True:
@@ -66,30 +74,31 @@ class State1(State):
             break
 
         if self.machine.reader.uid is None:
-            logging.warning("No card detected. Retrying...")
+            logger.warning("No card detected. Retrying...")
             self.machine.current_state = 'State1'  # Wait again
         else:
-            logging.info(f"Found card with UID: {[hex(i) for i in self.machine.reader.uid]}") 
+            logger.info(f"Found card with UID: {[hex(i) for i in self.machine.reader.uid]}") 
             self.machine.current_state = 'State2'  # Transition to State2
 
 class State2(State):
     def run(self):
-        logging.info("Writing Bottle ID to card...")
+        logger.info("Writing Bottle ID to card...")
         write_successful = False
 
         # Simulate writing logic
         write_successful = self.machine.reader.write_block(self.machine.reader.uid, 4, nfc.strint_to_hex_block('B16B00B5')) # type: ignore
         
         if write_successful:
-            logging.info("Successfully wrote to card.")
+            logger.info("Successfully wrote to card.")
+            self.machine.unix_time = int(time())
             self.machine.current_state = 'State3'  # Transition to State3
         else:
-            logging.error("Failed to write to card. Waiting for a new card.")
+            logger.error("Failed to write to card. Waiting for a new card.")
             self.machine.current_state = 'State1'  # Transition back to State1
 
 class State3(State):
     def run(self):
-        logging.info("Saving Bottle ID and timestamp to database...")
+        logger.info("Saving Bottle ID and timestamp to database...")
         
         # Simulate database write (replace with actual database code)
         db_write_successful = False
@@ -99,39 +108,45 @@ class State3(State):
         conn = sql.connect(SQL_PATH)
         cursor = conn.cursor()
 
-        cursor.execute("UPDATE Flasche SET Tagged_Date = ? WHERE Flaschen_ID = ?", (69, self.machine.SQL_counter))
+        cursor.execute("UPDATE Flasche SET Tagged_Date = ? WHERE Flaschen_ID = ?", (self.machine.unix_time, self.machine.SQL_counter))
         conn.commit()
 
         cursor.execute("SELECT Tagged_Date FROM Flasche WHERE Flaschen_ID = ?", (self.machine.SQL_counter,))
         cell_data = cursor.fetchone()
-        if cell_data[0] == 69: db_write_successful = True
-
-        self.machine.SQL_counter += 1
+        if cell_data[0] == self.machine.unix_time: db_write_successful = True
 
         # Close the connection
         conn.close()
         
         if db_write_successful:
-            logging.info("Successfully saved to database.")
+            logger.info("Successfully saved to database.")
+            self.machine.SQL_counter += 1
             self.machine.current_state = 'State4'  # Transition to State4
         else:
-            logging.error("Failed to save data to database.")
+            logger.error("Failed to save data to database.")
             self.machine.current_state = 'State5'  # Transition to State5
 
 class State4(State):
     def run(self):
-        logging.info("Successfully completed the process! Returning to State1.")
+        temp_uid = None
+        while True:
+            temp_uid = self.machine.reader.read_passive_target(timeout=0.5)
+            print(".", end="")
+            if temp_uid is None:
+                continue
+            break
         
-        # Transition back to State1 - probably not hepful while debugging
-        #self.machine.current_state = 'State1'  
+        if temp_uid != self.machine.reader.uid:
+            logger.info("New card detected. Returning to State1")
+            self.machine.current_state = 'State1' 
 
 class State5(State):
     def run(self):
-        logging.error("Process failed at some point. Please check the logs.")
+        logger.error("Process failed at some point. Please check the logs.")
         self.machine.current_state = 'State5'  # End of process
 
 # Main execution
 if __name__ == '__main__':
     machine = StateMachine(nfc_reader)
     machine.run()
-    logging.info("Stopped Execution. Please rerun the program to start again.")
+    logger.info("Stopped Execution. Please rerun the program to start again.")

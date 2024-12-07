@@ -7,7 +7,12 @@ import logging
 
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+LOG_PATH = "/home/uwe/IOT_pn532_KevAbo/log/nfc_reader.log"
+logging.basicConfig(
+    level=logging.INFO,
+    filename=LOG_PATH,
+    filemode="a",
+    format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Constants

@@ -1,3 +1,4 @@
+import os.path
 import logging
 import nfc_reader as nfc
 import sqlite3 as sql
@@ -5,9 +6,16 @@ import qrcode
 from PIL import Image
 
 # Initialize logger, NFCREADER and Databasepath
-logging.basicConfig(level=logging.DEBUG)
 nfc_reader = None
 SQL_PATH = "/home/uwe/IOT_pn532_KevAbo/data/flaschen_database.db"
+LOG_PATH = "/home/uwe/IOT_pn532_KevAbo/log/station2.log"
+logging.basicConfig(
+    level=logging.DEBUG,
+    filename=LOG_PATH,
+    filemode="a",
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 class StateMachine:
     def __init__(self, reader):
@@ -37,7 +45,7 @@ class State:
 # Init State
 class State0(State):
     def run(self):
-        logging.info("Initializing RFID reader...")
+        logger.info("Initializing RFID reader...")
         init_successful = False
 
         self.machine.reader = nfc.NFCReader()
@@ -45,16 +53,16 @@ class State0(State):
             init_successful = True
         
         if init_successful:
-            logging.info("RFID reader initialized successfully.")
+            logger.info("RFID reader initialized successfully.")
             self.machine.current_state = 'State1'
         else:
-            logging.error("Failed to initialize RFID reader.")
+            logger.error("Failed to initialize RFID reader.")
             self.machine.current_state = 'State5'
 
 # Read RFID Tag State
 class State1(State):
     def run(self):
-        logging.info("Waiting for RFID card...")
+        logger.info("Waiting for RFID card...")
         
         while True:
             self.machine.reader.uid = self.machine.reader.read_passive_target(timeout=0.5)
@@ -66,16 +74,16 @@ class State1(State):
         self.machine.flaschen_id = nfc.hex_block_to_strint(self.machine.reader.read_block(self.machine.reader.uid, 4))
 
         if self.machine.reader.uid is None:
-            logging.warning("No card detected. Retrying...")
+            logger.warning("No card detected. Retrying...")
             self.machine.current_state = 'State1'
         else:
-            logging.info(f"Found card with UID: {[hex(i) for i in self.machine.reader.uid]}") 
+            logger.info(f"Found card with UID: {[hex(i) for i in self.machine.reader.uid]}") 
             self.machine.current_state = 'State2'
 
 # Read from Database State
 class State2(State):
     def run(self):
-        logging.info("Reading from Database...")
+        logger.info("Reading from Database...")
         db_read_successful = False
 
         rezept_id, granulat_id, menge = None, None, None
@@ -96,11 +104,11 @@ class State2(State):
             db_read_successful = True
         
         if db_read_successful:
-            logging.info(f"Flasche mit ID {self.machine.flaschen_id} hat Rezept_ID: {rezept_id}, Granulat_ID: {granulat_id} und Menge: {menge}")
-            logging.info("Successfully read from database.")
+            logger.info(f"Flasche mit ID {self.machine.flaschen_id} hat Rezept_ID: {rezept_id}, Granulat_ID: {granulat_id} und Menge: {menge}")
+            logger.info("Successfully read from database.")
             self.machine.current_state = 'State3'
         else:
-            logging.error("Failed to read data from database.")
+            logger.error("Failed to read data from database.")
             self.machine.current_state = 'State5'
 
 # Create QR-Code State
@@ -110,31 +118,44 @@ class State3(State):
 
         qr = qrcode.QRCode(version=1, box_size=10, border=4)
         qr.add_data(self.machine.flaschen_id)
-        qr_img = qr.make_image(fill_color='black', back_color='white')
+        qr_img = qr.make_image(fill_color='black', back_color='white').convert('RGBA')
+        logo = Image.open("/home/uwe/IOT_pn532_KevAbo/qr_code/mexico_pepe.png").resize((75, 75), Image.LANCZOS)
 
-        logo = Image.open("MCI-negative_Print.png").resize((75, 75), Image.LANCZOS)
+        if logo.mode != 'RGBA':
+            logo = logo.convert('RGBA')
+
         offset = ((qr_img.size[0] - 75) // 2, (qr_img.size[1] - 75) // 2)
         qr_img.paste(logo, offset, mask=logo.split()[3] if logo.mode == 'RGBA' else None)
-        
-        qr_img.save(f"../src/QR_Code{self.machine.flaschen_id}.png")
+        qr_img.save(f"/home/uwe/IOT_pn532_KevAbo/qr_code/QR_Code{self.machine.flaschen_id}.png")
+
+        if os.path.isfile(f"/home/uwe/IOT_pn532_KevAbo/qr_code/QR_Code{self.machine.flaschen_id}.png"):
+            qr_creation_successful = True
 
         if qr_creation_successful:
-            logging.info("Successfully created QR-Code.")
-            self.machine.current_state = 'State3'
+            logger.info("Successfully created QR-Code.")
+            self.machine.current_state = 'State4'
         else:
-            logging.error("Failed to create QR-Code.")
+            logger.error("Failed to create QR-Code.")
             self.machine.current_state = 'State5'
 
+# Wait State
 class State4(State):
     def run(self):
-        logging.info("Successfully completed the process! Returning to State1.")
+        temp_uid = None
+        while True:
+            temp_uid = self.machine.reader.read_passive_target(timeout=0.5)
+            print(".", end="")
+            if temp_uid is None:
+                continue
+            break
         
-        # Transition back to State1 - probably not hepful while debugging
-        #self.machine.current_state = 'State1'  
+        if temp_uid != self.machine.reader.uid:
+            logger.info("New card detected. Returning to State1")
+            self.machine.current_state = 'State1'
 
 class State5(State):
     def run(self):
-        logging.error("Process failed at some point. Please check the logs.")
+        logger.error("Process failed at some point. Please check the logs.")
         self.machine.current_state = 'State5'
 
 
@@ -142,4 +163,4 @@ class State5(State):
 if __name__ == '__main__':
     machine = StateMachine(nfc_reader)
     machine.run()
-    logging.info("Stopped Execution. Please rerun the program to start again.")
+    logger.info("Stopped Execution. Please rerun the program to start again.")
