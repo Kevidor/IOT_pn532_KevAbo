@@ -33,7 +33,7 @@ State2  -->  State3: Schreiben erfolgreich
 State3  -->  State5: DB schreiben nicht erfolgreich
 State3  -->  State4: DB schreiben erfolgreich
 State1  -->  State5: Timeout
-State4  -->  State1: Neuer RFID-Tag
+State4  -->  State1: Warte auf neue RFID
 State4  -->  [*]: Sende Nachricht
 State5  -->  [*]: Sende Nachricht
 ```

@@ -8,14 +8,11 @@ from PIL import Image
 # Initialize logger, NFCREADER and Databasepath
 nfc_reader = None
 SQL_PATH = "/home/uwe/IOT_pn532_KevAbo/data/flaschen_database.db"
-LOG_PATH = "/home/uwe/IOT_pn532_KevAbo/log/station2.log"
-logging.basicConfig(
-    level=logging.DEBUG,
-    filename=LOG_PATH,
-    filemode="a",
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+logger2 = logging.getLogger("station2_logger")
+logger2.setLevel(logging.DEBUG)
+file_handler_station1 = logging.FileHandler("/home/uwe/IOT_pn532_KevAbo/log/station2.log", mode="a")
+file_handler_station1.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+logger2.addHandler(file_handler_station1)
 
 class StateMachine:
     def __init__(self, reader):
@@ -45,7 +42,7 @@ class State:
 # Init State
 class State0(State):
     def run(self):
-        logger.info("Initializing RFID reader...")
+        logging.info("Initializing RFID reader...")
         init_successful = False
 
         self.machine.reader = nfc.NFCReader()
@@ -53,16 +50,16 @@ class State0(State):
             init_successful = True
         
         if init_successful:
-            logger.info("RFID reader initialized successfully.")
+            logger2.info("RFID reader initialized successfully.")
             self.machine.current_state = 'State1'
         else:
-            logger.error("Failed to initialize RFID reader.")
+            logger2.error("Failed to initialize RFID reader.")
             self.machine.current_state = 'State5'
 
 # Read RFID Tag State
 class State1(State):
     def run(self):
-        logger.info("Waiting for RFID card...")
+        logging.info("Waiting for RFID card...")
         
         while True:
             self.machine.reader.uid = self.machine.reader.read_passive_target(timeout=0.5)
@@ -74,16 +71,16 @@ class State1(State):
         self.machine.flaschen_id = nfc.hex_block_to_strint(self.machine.reader.read_block(self.machine.reader.uid, 4))
 
         if self.machine.reader.uid is None:
-            logger.warning("No card detected. Retrying...")
+            logger2.warning("No card detected. Retrying...")
             self.machine.current_state = 'State1'
         else:
-            logger.info(f"Found card with UID: {[hex(i) for i in self.machine.reader.uid]}") 
+            logger2.info(f"Found card with UID: {[hex(i) for i in self.machine.reader.uid]}") 
             self.machine.current_state = 'State2'
 
 # Read from Database State
 class State2(State):
     def run(self):
-        logger.info("Reading from Database...")
+        logging.info("Reading from Database...")
         db_read_successful = False
 
         rezept_id, granulat_id, menge = None, None, None
@@ -104,16 +101,17 @@ class State2(State):
             db_read_successful = True
         
         if db_read_successful:
-            logger.info(f"Flasche mit ID {self.machine.flaschen_id} hat Rezept_ID: {rezept_id}, Granulat_ID: {granulat_id} und Menge: {menge}")
-            logger.info("Successfully read from database.")
+            logger2.info(f"Flasche mit ID {self.machine.flaschen_id} hat Rezept_ID: {rezept_id}, Granulat_ID: {granulat_id} und Menge: {menge}")
+            logger2.info("Successfully read from database.")
             self.machine.current_state = 'State3'
         else:
-            logger.error("Failed to read data from database.")
+            logger2.error("Failed to read data from database.")
             self.machine.current_state = 'State5'
 
-# Create QR-Code State
+# Generate QR-Code State
 class State3(State):
     def run(self):
+        logging.info("Generating QR-Code...")
         qr_creation_successful = False
 
         qr = qrcode.QRCode(version=1, box_size=10, border=4)
@@ -132,10 +130,10 @@ class State3(State):
             qr_creation_successful = True
 
         if qr_creation_successful:
-            logger.info("Successfully created QR-Code.")
+            logger2.info("Successfully created QR-Code.")
             self.machine.current_state = 'State4'
         else:
-            logger.error("Failed to create QR-Code.")
+            logger2.error("Failed to create QR-Code.")
             self.machine.current_state = 'State5'
 
 # Wait State
@@ -150,12 +148,12 @@ class State4(State):
             break
         
         if temp_uid != self.machine.reader.uid:
-            logger.info("New card detected. Returning to State1")
+            logger2.info("New card detected. Returning to State1")
             self.machine.current_state = 'State1'
 
 class State5(State):
     def run(self):
-        logger.error("Process failed at some point. Please check the logs.")
+        logger2.error("Process failed at some point. Please check the logs.")
         self.machine.current_state = 'State5'
 
 
@@ -163,4 +161,4 @@ class State5(State):
 if __name__ == '__main__':
     machine = StateMachine(nfc_reader)
     machine.run()
-    logger.info("Stopped Execution. Please rerun the program to start again.")
+    logger2.info("Stopped Execution. Please rerun the program to start again.")
