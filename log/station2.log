@@ -1,0 +1,10 @@
+2024-12-07 14:12:49,588 - INFO - RFID reader initialized successfully.
+2024-12-07 14:12:53,604 - INFO - Found card with UID: ['0xd3', '0x3', '0x4c', '0x91']
+2024-12-07 14:12:53,609 - INFO - Flasche mit ID 1 hat Rezept_ID: 2, Granulat_ID: 1 und Menge: 50.0
+2024-12-07 14:12:53,612 - INFO - Successfully read from database.
+2024-12-07 14:12:53,832 - INFO - Successfully created QR-Code.
+2024-12-07 14:12:57,888 - INFO - New card detected. Returning to State1
+2024-12-07 14:12:57,978 - INFO - Found card with UID: ['0x53', '0x3b', '0x4c', '0x91']
+2024-12-07 14:12:57,983 - INFO - Flasche mit ID 2 hat Rezept_ID: 3, Granulat_ID: 3 und Menge: 42.0
+2024-12-07 14:12:57,984 - INFO - Successfully read from database.
+2024-12-07 14:12:58,166 - INFO - Successfully created QR-Code.

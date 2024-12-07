@@ -1,0 +1,20 @@
+2024-12-07 14:12:20,618 - INFO - Found PN532 with firmware version: 1.6
+2024-12-07 14:12:20,634 - INFO - Waiting for RFID/NFC card...
+2024-12-07 14:12:20,665 - INFO - Found card with UID: ['0xd3', '0x3', '0x4c', '0x91']
+2024-12-07 14:12:20,700 - INFO - Successfully wrote data to block 4
+2024-12-07 14:12:38,067 - INFO - Found PN532 with firmware version: 1.6
+2024-12-07 14:12:38,083 - INFO - Waiting for RFID/NFC card...
+2024-12-07 14:12:38,113 - INFO - Found card with UID: ['0x53', '0x3b', '0x4c', '0x91']
+2024-12-07 14:12:38,149 - INFO - Successfully wrote data to block 4
+2024-12-07 14:12:49,571 - INFO - Found PN532 with firmware version: 1.6
+2024-12-07 14:13:39,057 - INFO - Found PN532 with firmware version: 1.6
+2024-12-07 14:13:39,144 - INFO - Successfully wrote data to block 4
+2024-12-07 14:13:43,049 - INFO - Successfully wrote data to block 4
+2024-12-07 14:14:21,594 - INFO - Found PN532 with firmware version: 1.6
+2024-12-07 14:14:21,610 - INFO - Waiting for RFID/NFC card...
+2024-12-07 14:14:21,640 - INFO - Found card with UID: ['0xd3', '0x3', '0x4c', '0x91']
+2024-12-07 14:14:21,676 - INFO - Successfully wrote data to block 4
+2024-12-07 14:14:29,410 - INFO - Found PN532 with firmware version: 1.6
+2024-12-07 14:14:29,427 - INFO - Waiting for RFID/NFC card...
+2024-12-07 14:14:29,457 - INFO - Found card with UID: ['0x53', '0x3b', '0x4c', '0x91']
+2024-12-07 14:14:29,493 - INFO - Successfully wrote data to block 4

@@ -1,0 +1,8 @@
+2024-12-07 14:13:39,074 - INFO - RFID reader initialized successfully.
+2024-12-07 14:13:39,107 - INFO - Found card with UID: ['0xd3', '0x3', '0x4c', '0x91']
+2024-12-07 14:13:39,144 - INFO - Successfully wrote to card.
+2024-12-07 14:13:39,157 - INFO - Successfully saved to database.
+2024-12-07 14:13:42,964 - INFO - New card detected. Returning to State1
+2024-12-07 14:13:43,002 - INFO - Found card with UID: ['0x53', '0x3b', '0x4c', '0x91']
+2024-12-07 14:13:43,050 - INFO - Successfully wrote to card.
+2024-12-07 14:13:43,119 - INFO - Successfully saved to database.
