@@ -34,6 +34,7 @@ State3  -->  State5: DB schreiben nicht erfolgreich
 State3  -->  State4: DB schreiben erfolgreich
 State1  -->  State5: Timeout
 State4  -->  State1: Warte auf neue RFID
+State5  -->  State1: Fehler quittiert
 State4  -->  [*]: Sende Nachricht
 State5  -->  [*]: Sende Nachricht
 ```
@@ -70,13 +71,10 @@ State2  -->  State5: Daten auslesen nicht erfolgreich
 State3  -->  State4: QR-Code erfolgreich erstellt
 State3  -->  State5: QR-Code konnte nicht erstellt werden
 State4  -->  State1: Warte auf neue RFID
-State4  -->  [*]
+State5  -->  State1: Fehler quittiert
+State4  -->  [*]: Sende Nachricht
+State5  -->  [*]: Sende Nachricht
 ```
-
-### QR-Codes
-
-![flaschen_datenbank_2](qr_code/QR_Code1.png)
-![flaschen_datenbank_2](qr_code/QR_Code2.png)
 
 #### Abgabe
 
@@ -95,3 +93,8 @@ State4  -->  [*]
 #### Abgabe Bonus (2pt)
 
 - 2pt: Für alle korrekt abgefüllten Flaschen wird ein QR-Code erstellt, welche die ID und den Rezept-Nummer und das Datum enthält
+
+### QR-Codes
+
+![flaschen_datenbank_2](qr_code/QR_Code1.png)
+![flaschen_datenbank_2](qr_code/QR_Code2.png)
